@@ -24,6 +24,13 @@ pub fn is_on_path(dir: &Path, path_var: Option<&str>) -> bool {
     std::env::split_paths(path_var).any(|entry| entry == dir)
 }
 
+pub fn render_wrapper(crate_root: &Path) -> String {
+    format!(
+        "#!/usr/bin/env bash\nset -euo pipefail\n\nREPO=\"{}\"\nexec cargo run --manifest-path \"$REPO/Cargo.toml\" -- \"$@\"\n",
+        crate_root.display()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,5 +86,20 @@ mod tests {
         let dir = Path::new("/opt/bin");
         let path_var = "/usr/bin:/home/demo/.local/bin:/bin";
         assert!(!is_on_path(dir, Some(path_var)));
+    }
+
+    #[test]
+    fn render_wrapper_contains_expected_lines() {
+        let wrapper = render_wrapper(Path::new("/repo/root"));
+        assert!(wrapper.starts_with("#!/usr/bin/env bash\n"));
+        assert!(wrapper.contains("set -euo pipefail\n"));
+        assert!(wrapper.contains("REPO=\"/repo/root\"\n"));
+        assert!(wrapper.contains("exec cargo run --manifest-path \"$REPO/Cargo.toml\" -- \"$@\"\n"));
+    }
+
+    #[test]
+    fn render_wrapper_quotes_repo_paths_with_spaces() {
+        let wrapper = render_wrapper(Path::new("/path with spaces/repo"));
+        assert!(wrapper.contains("REPO=\"/path with spaces/repo\"\n"));
     }
 }
