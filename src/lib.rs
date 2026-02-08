@@ -53,12 +53,8 @@ pub fn make_plan(
     let bin_names = project::list_bins(&manifest_path)?;
     let bin_name = select_bin(args, &bin_names)?;
 
-    let install_dir = install::install_dir(install::EnvSnapshot {
-        home: env.home.as_deref(),
-        xdg_bin_home: env.xdg_bin_home.as_deref(),
-        path: env.path.as_deref(),
-    })
-    .ok_or_else(|| "HOME is not set; cannot determine install directory".to_string())?;
+    let install_dir = install::install_dir(env)
+        .ok_or_else(|| "HOME is not set; cannot determine install directory".to_string())?;
 
     let wrapper_path = install_dir.join(&bin_name);
     let wrapper_contents = install::render_wrapper(&crate_root);

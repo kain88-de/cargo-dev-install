@@ -2,18 +2,12 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-pub struct EnvSnapshot<'a> {
-    pub home: Option<&'a Path>,
-    pub xdg_bin_home: Option<&'a Path>,
-    pub path: Option<&'a str>,
-}
-
-pub fn install_dir(env: EnvSnapshot<'_>) -> Option<PathBuf> {
-    if let Some(xdg) = env.xdg_bin_home {
+pub fn install_dir(env: &crate::EnvSnapshot) -> Option<PathBuf> {
+    if let Some(xdg) = env.xdg_bin_home.as_deref() {
         return Some(xdg.to_path_buf());
     }
 
-    let home = env.home?;
+    let home = env.home.as_deref()?;
     Some(home.join(".local").join("bin"))
 }
 
@@ -64,35 +58,35 @@ mod tests {
 
     #[test]
     fn install_dir_prefers_xdg_bin_home() {
-        let env = EnvSnapshot {
-            home: Some(Path::new("/home/demo")),
-            xdg_bin_home: Some(Path::new("/custom/bin")),
+        let env = crate::EnvSnapshot {
+            home: Some(PathBuf::from("/home/demo")),
+            xdg_bin_home: Some(PathBuf::from("/custom/bin")),
             path: None,
         };
-        assert_eq!(install_dir(env), Some(PathBuf::from("/custom/bin")));
+        assert_eq!(install_dir(&env), Some(PathBuf::from("/custom/bin")));
     }
 
     #[test]
     fn install_dir_falls_back_to_home_local_bin() {
-        let env = EnvSnapshot {
-            home: Some(Path::new("/home/demo")),
+        let env = crate::EnvSnapshot {
+            home: Some(PathBuf::from("/home/demo")),
             xdg_bin_home: None,
             path: None,
         };
         assert_eq!(
-            install_dir(env),
+            install_dir(&env),
             Some(PathBuf::from("/home/demo/.local/bin"))
         );
     }
 
     #[test]
     fn install_dir_none_when_no_home() {
-        let env = EnvSnapshot {
+        let env = crate::EnvSnapshot {
             home: None,
             xdg_bin_home: None,
             path: None,
         };
-        assert_eq!(install_dir(env), None);
+        assert_eq!(install_dir(&env), None);
     }
 
     #[test]
