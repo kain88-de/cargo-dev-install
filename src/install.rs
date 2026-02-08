@@ -1,4 +1,6 @@
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 pub struct EnvSnapshot<'a> {
     pub home: Option<&'a Path>,
@@ -31,9 +33,34 @@ pub fn render_wrapper(crate_root: &Path) -> String {
     )
 }
 
+pub fn write_wrapper(wrapper_path: &Path, contents: &str, force: bool) -> io::Result<()> {
+    if wrapper_path.exists() && !force {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "wrapper already exists",
+        ));
+    }
+
+    if let Some(parent) = wrapper_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let temp_path = wrapper_path.with_extension("tmp");
+    fs::write(&temp_path, contents)?;
+
+    let mut perms = fs::metadata(&temp_path)?.permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&temp_path, perms)?;
+
+    fs::rename(&temp_path, wrapper_path)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::OpenOptions;
 
     #[test]
     fn install_dir_prefers_xdg_bin_home() {
@@ -101,5 +128,54 @@ mod tests {
     fn render_wrapper_quotes_repo_paths_with_spaces() {
         let wrapper = render_wrapper(Path::new("/path with spaces/repo"));
         assert!(wrapper.contains("REPO=\"/path with spaces/repo\"\n"));
+    }
+
+    #[test]
+    fn write_wrapper_creates_parent_and_sets_executable() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let wrapper_path = temp_dir.path().join("bin").join("demo");
+
+        write_wrapper(&wrapper_path, "echo demo\n", false).expect("write wrapper");
+
+        let metadata = fs::metadata(&wrapper_path).expect("wrapper metadata");
+        let mode = metadata.permissions().mode();
+        assert_eq!(mode & 0o111, 0o111);
+    }
+
+    #[test]
+    fn write_wrapper_refuses_overwrite_without_force() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let wrapper_path = temp_dir.path().join("demo");
+        write_wrapper(&wrapper_path, "echo demo\n", false).expect("write wrapper");
+
+        let err = write_wrapper(&wrapper_path, "echo other\n", false)
+            .expect_err("expected already exists");
+        assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
+    }
+
+    #[test]
+    fn write_wrapper_overwrites_with_force() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let wrapper_path = temp_dir.path().join("demo");
+        write_wrapper(&wrapper_path, "echo demo\n", false).expect("write wrapper");
+
+        write_wrapper(&wrapper_path, "echo other\n", true).expect("overwrite");
+        let contents = fs::read_to_string(&wrapper_path).expect("read wrapper");
+        assert_eq!(contents, "echo other\n");
+    }
+
+    #[test]
+    fn write_wrapper_overwrites_existing_regular_file_with_force() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let wrapper_path = temp_dir.path().join("demo");
+        OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&wrapper_path)
+            .expect("create file");
+
+        write_wrapper(&wrapper_path, "echo demo\n", true).expect("overwrite");
+        let contents = fs::read_to_string(&wrapper_path).expect("read wrapper");
+        assert_eq!(contents, "echo demo\n");
     }
 }
