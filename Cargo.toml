@@ -1,7 +1,7 @@
 [package]
 name = "cargo-dev-install"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Cargo subcommand to install dev wrappers for running from source"
 license = "MIT"
 readme = "README.md"
