@@ -1,5 +1,7 @@
 # Cargo dev install
 
+![CI](https://github.com/kain88-de/cargo-dev-install/actions/workflows/ci.yml/badge.svg)
+
 Linux-only Cargo subcommand that installs a wrapper script so your app runs from the working tree via `cargo run`.
 
 ## Install the plugin

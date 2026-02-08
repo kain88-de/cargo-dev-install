@@ -2,6 +2,12 @@
 name = "cargo-dev-install"
 version = "0.1.0"
 edition = "2021"
+description = "Cargo subcommand to install dev wrappers for running from source"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/kain88-de/cargo-dev-install"
+keywords = ["cargo", "subcommand", "dev", "install"]
+categories = ["development-tools::cargo-plugins"]
 
 [[bin]]
 name = "cargo-dev-install"
