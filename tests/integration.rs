@@ -71,7 +71,9 @@ fn installs_wrapper_in_default_location() {
     let wrapper_path = home.path().join(".local/bin/demo");
     assert!(wrapper_path.is_file());
     let contents = fs::read_to_string(&wrapper_path).expect("read wrapper");
-    assert!(contents.contains("exec cargo run --manifest-path \"$REPO/Cargo.toml\" -- \"$@\""));
+    assert!(contents.contains(
+        "exec cargo run --quiet --release --manifest-path \"$REPO/Cargo.toml\" -- \"$@\""
+    ));
 }
 
 #[test]

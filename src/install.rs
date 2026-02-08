@@ -22,7 +22,7 @@ pub fn is_on_path(dir: &Path, path_var: Option<&str>) -> bool {
 
 pub fn render_wrapper(crate_root: &Path) -> String {
     format!(
-        "#!/usr/bin/env bash\nset -euo pipefail\n\nREPO=\"{}\"\nexec cargo run --manifest-path \"$REPO/Cargo.toml\" -- \"$@\"\n",
+        "#!/usr/bin/env bash\nset -euo pipefail\n\nREPO=\"{}\"\nexec cargo run --quiet --release --manifest-path \"$REPO/Cargo.toml\" -- \"$@\"\n",
         crate_root.display()
     )
 }
@@ -115,7 +115,9 @@ mod tests {
         assert!(wrapper.starts_with("#!/usr/bin/env bash\n"));
         assert!(wrapper.contains("set -euo pipefail\n"));
         assert!(wrapper.contains("REPO=\"/repo/root\"\n"));
-        assert!(wrapper.contains("exec cargo run --manifest-path \"$REPO/Cargo.toml\" -- \"$@\"\n"));
+        assert!(wrapper.contains(
+            "exec cargo run --quiet --release --manifest-path \"$REPO/Cargo.toml\" -- \"$@\"\n"
+        ));
     }
 
     #[test]
