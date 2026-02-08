@@ -1,6 +1,7 @@
 use predicates::prelude::*;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 fn write_file(path: &Path, contents: &str) {
     if let Some(parent) = path.parent() {
@@ -17,6 +18,17 @@ fn create_single_bin_crate(root: &Path) {
     write_file(
         &root.join("src/main.rs"),
         "fn main() { println!(\"ok\"); }\n",
+    );
+}
+
+fn create_single_bin_crate_with_output(root: &Path) {
+    write_file(
+        &root.join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[[bin]]\nname = \"demo\"\npath = \"src/main.rs\"\n",
+    );
+    write_file(
+        &root.join("src/main.rs"),
+        "fn main() {\n    println!(\"MARKER\");\n    for arg in std::env::args().skip(1) {\n        println!(\"arg:{arg}\");\n    }\n}\n",
     );
 }
 
@@ -155,4 +167,36 @@ fn supports_multi_bin_with_bin_flag() {
 
     let wrapper = home.path().join(".local/bin/beta");
     assert!(wrapper.is_file());
+}
+
+#[test]
+fn executes_installed_wrapper() {
+    let repo = tempfile::tempdir().expect("repo");
+    create_single_bin_crate_with_output(repo.path());
+
+    let home = tempfile::tempdir().expect("home");
+    let path_var = "/usr/bin";
+
+    run_plugin(repo.path(), home.path(), path_var, None, &[]).success();
+
+    let wrapper = home.path().join(".local/bin/demo");
+    let output = Command::new(&wrapper)
+        .current_dir(repo.path())
+        .env("CARGO_TARGET_DIR", repo.path().join("target"))
+        .output()
+        .expect("run wrapper");
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("MARKER"));
+    assert!(!stdout.contains("arg:demo"));
+
+    let output = Command::new(&wrapper)
+        .current_dir(repo.path())
+        .env("CARGO_TARGET_DIR", repo.path().join("target"))
+        .arg("hello")
+        .output()
+        .expect("run wrapper");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("MARKER"));
+    assert!(stdout.contains("arg:hello"));
 }
