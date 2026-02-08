@@ -37,3 +37,10 @@ Guidelines:
   - `cargo clippy -- -D warnings`
 - Format:
   - `cargo fmt`
+
+## Architecture (short)
+
+- Linux-only Cargo subcommand that installs a wrapper script named after the selected binary.
+- Install dir: `XDG_BIN_HOME` if set, else `$HOME/.local/bin`; warn if not on `PATH`.
+- Wrapper executes `cargo run --manifest-path "$REPO/Cargo.toml" -- "$@"` with absolute repo root (no symlink resolution).
+- Multi-bin: use `--bin <name>` or interactive selection on TTY.
